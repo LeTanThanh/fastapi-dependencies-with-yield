@@ -75,6 +75,7 @@ You saw that you can use dependencies with yield and have try blocks that catch 
 The same way, you could raise an HTTPException or similar in the exit code, after the yield.
 """
 
+"""
 data = {
   "plumbus": {
     "description": "Freshly pickled plumbus",
@@ -111,3 +112,38 @@ async def read_item(id: Annotated[str, Path()], username: Annotated[str, Depends
     raise OwnerException(username)
 
   return item
+"""
+
+# Dependencies with yield and except
+
+"""
+If you catch an exception using except in a dependency with yield and don't raise it again (or raise a new exception), FastAPI won't be able to notice there was an exception, the same way that would happen with regular Python:
+"""
+
+class InternalException(Exception):
+  pass
+
+def get_username():
+  try:
+    yield "Rick"
+  except InternalException:
+    print("Oops, we didn't raise again, Britney")
+
+@app.get("/items/{id}")
+async def read_item(id: Annotated[str, Path()], username: Annotated[str, Depends(get_username)]):
+  if id == "portal-gun":
+    raise InternalException(
+      f"The portal gun is too dangerous to be owned by {username}"
+    )
+
+  if id != "plumbus":
+    raise HTTPException(
+      status_code = status.HTTP_404_NOT_FOUND,
+      detai = "Item not found, there's only a plumbus here"
+    )
+
+  return id
+
+"""
+In this case, the client wil see an HTTP 500 Internal Server Error response as it should, given that we are not raising an HTTpException or similar, but the server will not have any logs or any other indication of what was the error.
+"""
