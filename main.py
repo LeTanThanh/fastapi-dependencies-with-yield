@@ -123,6 +123,7 @@ If you catch an exception using except in a dependency with yield and don't rais
 class InternalException(Exception):
   pass
 
+"""
 def get_username():
   try:
     yield "Rick"
@@ -139,11 +140,36 @@ async def read_item(id: Annotated[str, Path()], username: Annotated[str, Depends
   if id != "plumbus":
     raise HTTPException(
       status_code = status.HTTP_404_NOT_FOUND,
-      detai = "Item not found, there's only a plumbus here"
+      detail = "Item not found, there's only a plumbus here"
     )
 
   return id
+"""
 
 """
 In this case, the client wil see an HTTP 500 Internal Server Error response as it should, given that we are not raising an HTTpException or similar, but the server will not have any logs or any other indication of what was the error.
 """
+
+# Always raise in Dependencies with yield and except
+
+def get_username():
+  try:
+    yield "Rick"
+  except InternalException:
+    print("Oops, we didn't raise again, Britney")
+    raise
+
+@app.get("/items/{id}")
+async def read_item(id: Annotated[str, Path()], username: Annotated[str, Depends(get_username)]):
+  if id == "portal-gun":
+    raise InternalException(
+      f"The portal gun is too dangerous to be owned by {username}"
+    )
+
+  if id != "plumbus":
+    raise HTTPException(
+      status_code = status.HTTP_404_NOT_FOUND,
+      detail = "Item not found, there's only a plumbus here"
+    )
+
+  return id
