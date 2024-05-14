@@ -1,3 +1,13 @@
+from fastapi import FastAPI
+from fastapi import HTTPException
+from fastapi import status
+from fastapi import Path
+from fastapi import Depends
+
+from typing import Annotated
+
+app = FastAPI()
+
 # Dependencies with yield
 
 """
@@ -56,3 +66,48 @@ async def get_db():
   finally:
     db.close()
 """
+
+# Dependencies with yield and HTTPException
+
+"""
+You saw that you can use dependencies with yield and have try blocks that catch exceptions.
+
+The same way, you could raise an HTTPException or similar in the exit code, after the yield.
+"""
+
+data = {
+  "plumbus": {
+    "description": "Freshly pickled plumbus",
+    "owner": "Morty"
+  },
+  "portal-gun": {
+    "description": "Gun to create portals",
+    "owner": "Rick"
+  }
+}
+
+class OwnerException(Exception):
+  pass
+
+def get_username():
+  try:
+    yield "Rick"
+  except OwnerException as exception:
+    raise HTTPException(
+      status_code = status.HTTP_400_BAD_REQUEST,
+      detail = f"Owner error: {exception}"
+    )
+
+@app.get("/items/{id}")
+async def read_item(id: Annotated[str, Path()], username: Annotated[str, Depends(get_username)]):
+  if id not in data:
+    raise HTTPException(
+      status_code = status.HTTP_401_UNAUTHORIZED,
+      detail = "Item not found"
+    )
+
+  item = data[id]
+  if item["owner"] != username:
+    raise OwnerException(username)
+
+  return item
